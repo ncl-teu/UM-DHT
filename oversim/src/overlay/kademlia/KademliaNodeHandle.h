@@ -52,7 +52,7 @@ public:
     // TODO
     inline simtime_t getRtt() const {
         return getProx();
-       // return this->prox.proximity;
+        //return SIMTIME_DBL(this->prox.proximity);
     } //deprecated
     inline void setRtt(simtime_t rtt) { this->prox.proximity = SIMTIME_DBL(rtt);  this->prox.accuracy = 1; } //deprecated
 

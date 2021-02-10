@@ -128,6 +128,14 @@ public:
                               cPolymorphic *contextPointer, Prox prox);
     bool cmpRTT(const KademliaBucketEntry& a, const KademliaBucketEntry& b);
 
+    double round_n(double number, double n)
+    {
+        number = number * pow(10,n-1); //四捨五入したい値を10の(n-1)乗倍する。
+        number = round(number); //小数点以下を四捨五入する。
+        number /= pow(10, n-1); //10の(n-1)乗で割る。
+        return number;
+    }
+
 protected:
     virtual NodeVector* findNode(const OverlayKey& key,
                          int numRedundantNodes,
@@ -239,6 +247,13 @@ protected:
                               BaseRouteMessage* msg);
 
     bool handleFailedNode(const TransportAddress& failed);
+};
+
+class CompDec{
+public:
+    bool operator()(const KademliaBucketEntry& a, const KademliaBucketEntry& b) {
+        return a.getRtt() > b.getRtt();
+    }
 };
 
 #endif
