@@ -100,6 +100,8 @@ protected://fields: kademlia parameters
     //Threshold
     int rtt_threshold;
 
+    bool useEquSpace;
+
 public:
     Kademlia();
 
@@ -167,6 +169,11 @@ protected:
     virtual void lookupFinished(bool isValid);
 
     virtual void handleNodeGracefulLeaveNotification();
+
+    virtual double calcDistanceV(std::vector<KademliaBucketEntry>& list, OverlayKey tKey);
+
+    virtual KademliaBucketEntry* getTarget(std::vector<KademliaBucketEntry>& list, KademliaBucketEntry& handle);
+
 
     friend class KademliaLookupListener;
 
@@ -247,12 +254,21 @@ protected:
                               BaseRouteMessage* msg);
 
     bool handleFailedNode(const TransportAddress& failed);
+
+
 };
 
 class CompDec{
 public:
     bool operator()(const KademliaBucketEntry& a, const KademliaBucketEntry& b) {
         return a.getRtt() > b.getRtt();
+    }
+};
+
+class CompKey{
+public:
+    bool operator()(const KademliaBucketEntry& a, const KademliaBucketEntry& b) {
+        return a.getKey() < b.getKey();
     }
 };
 

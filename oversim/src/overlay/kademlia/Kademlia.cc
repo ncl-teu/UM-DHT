@@ -118,6 +118,8 @@ void Kademlia::initializeOverlay(int stage)
     //Threshold
     rtt_threshold = par("rtt_threshold");
 
+    useEquSpace = par("useEquSpace");
+
     // R/Kademlia
     activePing = par("activePing");
     proximityRouting = par("proximityRouting");
@@ -323,6 +325,65 @@ KademliaBucket* Kademlia::routingBucket(const OverlayKey& key, bool ensure)
     // return bucket
     return bucket;
 }
+
+//Added by Kanemitsu START
+/**
+ * 分散を求める．
+ * @param list
+ * @param handle
+ * @param target
+ * @return
+ */
+double Kademlia::calcDistanceV(std::vector<KademliaBucketEntry>& list, OverlayKey tKey){
+    int cnt = 0;
+    double totalDistance = 0;
+    OverlayKey predKey;
+    for(std::vector<KademliaBucketEntry>::iterator p_a=list.begin(); p_a!=list.end();p_a++){
+        if(p_a->getKey() == tKey){
+            continue;
+        }
+        if(cnt == 0){
+            //k-bucketの最初の端の値を取得する．
+            //predKey = orgKeyVector.begin().getKey();
+        }else{
+            totalDistance += KeyPrefixMetric().distance2(list[cnt].getKey(), predKey);
+
+        }
+        predKey = p_a->getKey();
+        cnt++;
+    }
+    //最後の距離を求める．
+    totalDistance += KeyPrefixMetric().distance2(list[list.size()-1].getKey(), predKey);
+    //オリジナルの平均を求める．
+    double ave_orgDistance = totalDistance / cnt;
+    //オリジナルの分散を求める．
+    cnt = 0;
+    double total_orgv = 0;
+    for(std::vector<KademliaBucketEntry>::iterator p_b=list.begin(); p_b!=list.end();p_b++){
+        if(cnt == 0){
+            //k-bucketの最初の端の値を取得する．
+            //predKey = startEdgeKey;
+        }else{
+            double dist = KeyPrefixMetric().distance2(list[cnt].getKey(), predKey);
+            total_orgv  += abs(dist - ave_orgDistance) * abs(dist - ave_orgDistance);
+        }
+        predKey = p_b->getKey();
+        cnt++;
+
+    }
+    total_orgv += KeyPrefixMetric().distance2(list[list.size()-1].getKey(), predKey);
+    //オリジナルの分散を求める．
+    double v_orgDistance = total_orgv / cnt;
+
+    return v_orgDistance;
+}
+
+
+
+KademliaBucketEntry* Kademlia::getTarget(std::vector<KademliaBucketEntry>& list, KademliaBucketEntry& handle){
+    return NULL;
+}
+//Added by Kanemitsu END
 
 bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                           simtime_t rtt, bool maintenanceLookup)
@@ -583,128 +644,259 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
            << routingBucketIndex(kadHandle.getKey())
            << " which was not yet full." << endl;
     } else if (isAlive) {
-        //Added by Kanemitsu.
-        if(rtt_threshold > 0){
-
-            //OverlayKey totalKey = 0;
-            double init_total = 0;
-            std::vector<KademliaBucketEntry> largeRTTVector;
-            if(kadHandle.getRtt() == MAXTIME){
-                Prox prox =
-                        neighborCache->getProx(kadHandle, NEIGHBORCACHE_DEFAULT, -1,
-                                               this, NULL);
-                if (prox != Prox::PROX_SELF &&
-                    prox != Prox::PROX_UNKNOWN &&
-                    prox != Prox::PROX_WAITING &&
-                    prox != Prox::PROX_TIMEOUT) {
-                    kadHandle.setProx(prox);
-                    //routingAdd(handle, true, prox.proximity);//ctrlInfo->getSrcRoute() //TODO
+//Added by Kanemitsu START
+        if((rtt_threshold > 0)&&(!kadHandle.isUnspecified())){
+            //k-bucket内の隣り合うID間の距離を求める．
+            //そして，その平均値を求めて，その分散が最小になるようにする．
+            if(useEquSpace){
+                if(kadHandle.getRtt() == MAXTIME){
+                    Prox prox =
+                            neighborCache->getProx(kadHandle, NEIGHBORCACHE_DEFAULT, -1,
+                                                   this, NULL);
+                    if (prox != Prox::PROX_SELF &&
+                        prox != Prox::PROX_UNKNOWN &&
+                        prox != Prox::PROX_WAITING &&
+                        prox != Prox::PROX_TIMEOUT) {
+                        kadHandle.setProx(prox);
+                        //routingAdd(handle, true, prox.proximity);//ctrlInfo->getSrcRoute() //TODO
+                    }
                 }
-            }
-            //平均値を求めるためのループ
-            for (KademliaBucket::iterator j=bucket->begin(); j!=bucket->end(); j++) {
-                //totalKey += j->getKey();
-               // init_total += (thisNode.getKey()^(j->getKey())).toDouble();
-               init_total += KeyPrefixMetric().distance2(bucket->begin()->getKey(), j->getKey());
-                //EV << "KETA1:"<< (thisNode.getKey()^(j->getKey())).toDouble() <<endl;
-                if(j->getRtt() == MAXTIME){
-                    //continue;
-                }
-                if(j->getRtt() >= kadHandle.getRtt()){
-                 //   largeRTTVector.push_back(*j);
-                }
+                int idx = routingBucketIndex(kadHandle.getKey());
+                //int32_t startEdge = pow(2, idx);
+               // OverlayKey startEdgeKey = new OverlayKey(startEdge);
+               // int32_t endEdge = pow(2, idx +1);
 
-            }
-           //std::sort(largeRTTVector.begin(), largeRTTVector.end(),CompDec());
+               // OverlayKey endEdgeKey = new OverleyKey(endEdge);
+
+                std::vector<KademliaBucketEntry> keyVector;
+                std::vector<KademliaBucketEntry> orgKeyVector;
+                std::vector<KademliaBucketEntry> rttVector;
+
+                keyVector.push_back(kadHandle);
+                for(KademliaBucket::iterator v=bucket->begin(); v!=bucket->end();v++){
+                    keyVector.push_back(*v);
+                    orgKeyVector.push_back(*v);
 
 
-            //kadhandleとvectorの各要素を取り替えることで，keyの分散が大きくなれば良し．
-            //現状の平均値
-            //double init_total = totalKey.toDouble();
-            double init_total2 = init_total;
-            double init_ave = init_total/bucket->size();
-            double tmp_total = 0;
-            //初期の分散を求めるためのループ
-            for (KademliaBucket::iterator j=bucket->begin(); j!=bucket->end(); j++) {
-                double tmp = KeyPrefixMetric().distance2(bucket->begin()->getKey(), j->getKey());
-                tmp_total += abs(tmp-init_ave) * abs(tmp-init_ave);
-
-            }
-
-            double max_d2 = tmp_total / bucket->size();
-            double h_val = 0;
-            bool found = false;
-            //KademliaBucketEntry target;
-            KademliaBucket::iterator target;
-            KademliaBucket target2;
-
-            //最大の分散を求めるためのループ
-           // for(std::vector<KademliaBucketEntry>::iterator j=largeRTTVector.begin(); j!=largeRTTVector.end();j++){
-            for(KademliaBucket::iterator j=bucket->begin(); j!=bucket->end();j++){
-                if(j->getRtt() < kadHandle.getRtt()){
-                    continue;
                 }
 
-                //target = j;
-                   // if(largeRTTVector.
-                   //jの値
-                uint32_t val = KeyPrefixMetric().distance2(bucket->begin()->getKey(), j->getKey());
+                //IDの小さい順にソートする．
+                std::sort(orgKeyVector.begin(), orgKeyVector.end(), CompKey());
 
-                uint32_t kadVal = KeyPrefixMetric().distance2(bucket->begin()->getKey(), kadHandle.getKey());
-                double  total = init_total - val + kadVal;
-                //jとkadHandleを交換した場合の平均．
-                double  ave = total / bucket->size();
-                //kadHandleの要素値
-                double k_val = abs(kadVal - ave)*abs(kadVal - ave);
-                //     double k_val = 1;
-                uint32_t d_total = k_val;
-                //jをkadHandleを交換した場合の分散を求めるためのループ
-               // for(std::vector<KademliaBucketEntry>::iterator m=largeRTTVector.begin(); m!=largeRTTVector.end();m++){
-                for(KademliaBucket::iterator m=bucket->begin(); m!=bucket->end();m++){
-                    //mの要素の値
-                    double val2 = KeyPrefixMetric().distance2(bucket->begin()->getKey(), m->getKey());
-                    //jの値 = mの値だと，mが交換対象なので考えない．
-                    if(val2 == val){
-                        continue;
+                OverlayKey predKey;
+                //オリジナルの場合の分散を計算する．
+                //まずは平均値
+                int cnt = 0;
+                long double totalDistance = 0;
+                for(std::vector<KademliaBucketEntry>::iterator p_a=orgKeyVector.begin(); p_a!=orgKeyVector.end();p_a++){
+                    if(cnt == 0){
+                        //k-bucketの最初の端の値を取得する．
+                        //predKey = orgKeyVector.begin().getKey();
                     }else{
-                        double dif = abs(val2 - ave) * abs(val2 - ave);
-                        //double dif = 0;
-                        d_total += dif;
+                        totalDistance += KeyPrefixMetric().distance2(orgKeyVector[cnt].getKey(), predKey);
+
+
+                    }
+                    predKey = p_a->getKey();
+                    cnt++;
+                }
+                //最後の距離を求める．
+
+                totalDistance += KeyPrefixMetric().distance2(orgKeyVector[orgKeyVector.size()-1].getKey(), predKey);
+                //オリジナルの平均を求める．
+                long double ave_orgDistance = totalDistance / cnt;
+
+                //オリジナルの分散を求める．
+                cnt = 0;
+                long double total_orgv = 0;
+                for(std::vector<KademliaBucketEntry>::iterator p_b=orgKeyVector.begin(); p_b!=orgKeyVector.end();p_b++){
+                    if(cnt == 0){
+                        //k-bucketの最初の端の値を取得する．
+                        //predKey = startEdgeKey;
+                    }else{
+                        double dist = KeyPrefixMetric().distance2(orgKeyVector[cnt].getKey(), predKey);
+                        total_orgv  += abs(dist - ave_orgDistance) * abs(dist - ave_orgDistance);
+                    }
+                    predKey = p_b->getKey();
+                    cnt++;
+
+                }
+                total_orgv += KeyPrefixMetric().distance2(orgKeyVector[orgKeyVector.size()-1].getKey(), predKey);
+                //オリジナルの分散を求める．
+                long double v_orgDistance = total_orgv / cnt;
+
+                cnt = 0;
+                for (KademliaBucket::iterator j=bucket->begin(); j!=bucket->end(); j++) {
+                    //もしnewEntryよりもRTTが大きなものがいれば，対象に入れる．
+                    if(j->getRtt() >= kadHandle.getRtt()){
+                        rttVector.push_back(*j);
+                    }
+                    cnt++;
+                }
+                if(bucket->end()->getRtt() >= kadHandle.getRtt()){
+                    rttVector.push_back(*bucket->end());
+                }
+                //次は，kadhandleと，rttVectorどれか一つを入れ替えた場合の分散を求める．
+                //そのために毎回，vectorを生成する．
+                //keyの小さい順にソートする．
+                keyVector.push_back(kadHandle);
+                std::sort(keyVector.begin(), keyVector.end(), CompKey());
+                long double minV = v_orgDistance;
+                bool found = false;
+                //vectorの最初から見る．
+                KademliaBucket::iterator retEntry;
+
+                for(std::vector<KademliaBucketEntry>::iterator p_c=rttVector.begin(); p_c!=rttVector.end();p_c++){
+                    if(*p_c == kadHandle){
+                        continue;
+                    }
+                    //keyVector.erase(p_c);
+                    //p_aをターゲットとする．
+                    //keyVectorからp_cを削除して，その分散を求める．
+                    //入力としては，keyVectorとなる．
+                    //その後，keyVectorにp_cをpush_backしてsortする．
+
+                    long double tmpV = this->calcDistanceV(keyVector, p_c->getKey());
+
+                    if(tmpV <= minV){
+                        minV = tmpV;
+                        retEntry = p_c;
+                        found = true;
+
+                    }
+                    //keyVector.push_back(*p_c);
+                    //std::sort(keyVector.begin(), keyVector.end(), CompKey());
+
+                }
+
+                if(found){
+                    for(KademliaBucket::iterator m=bucket->begin(); m!=bucket->end();m++){
+                        if(retEntry->getKey() == m->getKey()){
+                            bucket->erase(m);
+                            break;
+                        }
+                    }
+
+                    //bucket->erase(retEntry);
+                    //re-add to tail
+                    bucket->push_back(kadHandle);
+
+                }
+
+
+            }else{
+
+                //OverlayKey totalKey = 0;
+                double init_total = 0;
+                std::vector<KademliaBucketEntry> largeRTTVector;
+                if(kadHandle.getRtt() == MAXTIME){
+                    Prox prox =
+                            neighborCache->getProx(kadHandle, NEIGHBORCACHE_DEFAULT, -1,
+                                                   this, NULL);
+                    if (prox != Prox::PROX_SELF &&
+                        prox != Prox::PROX_UNKNOWN &&
+                        prox != Prox::PROX_WAITING &&
+                        prox != Prox::PROX_TIMEOUT) {
+                        kadHandle.setProx(prox);
+                        //routingAdd(handle, true, prox.proximity);//ctrlInfo->getSrcRoute() //TODO
+                    }
+                }
+                //平均値を求めるためのループ
+                for (KademliaBucket::iterator j=bucket->begin(); j!=bucket->end(); j++) {
+                    //totalKey += j->getKey();
+                    // init_total += (thisNode.getKey()^(j->getKey())).toDouble();
+                    init_total += KeyPrefixMetric().distance2(bucket->begin()->getKey(), j->getKey());
+                    //EV << "KETA1:"<< (thisNode.getKey()^(j->getKey())).toDouble() <<endl;
+                    if(j->getRtt() == MAXTIME){
+                        //continue;
+                    }
+                    if(j->getRtt() >= kadHandle.getRtt()){
+                        //   largeRTTVector.push_back(*j);
                     }
 
                 }
+                //std::sort(largeRTTVector.begin(), largeRTTVector.end(),CompDec());
 
 
-               // }
-                double  d = d_total / bucket->size();
-                if(max_d2 <= d){
-                    found = true;
+                //kadhandleとvectorの各要素を取り替えることで，keyの分散が大きくなれば良し．
+                //現状の平均値
+                //double init_total = totalKey.toDouble();
+                double init_total2 = init_total;
+                double init_ave = init_total/bucket->size();
+                double tmp_total = 0;
+                //初期の分散を求めるためのループ
+                for (KademliaBucket::iterator j=bucket->begin(); j!=bucket->end(); j++) {
+                    double tmp = KeyPrefixMetric().distance2(bucket->begin()->getKey(), j->getKey());
+                    tmp_total += abs(tmp-init_ave) * abs(tmp-init_ave);
 
-                    max_d2 = d;
-                    target = j;
                 }
-                init_total = init_total2;
-            }
 
-            if(found){
-                bucket->erase(target);
-                //re-add to tail
-                bucket->push_back(kadHandle);
+                double max_d2 = tmp_total / bucket->size();
+                double h_val = 0;
+                bool found = false;
+                //KademliaBucketEntry target;
+                KademliaBucket::iterator target;
+                KademliaBucket target2;
 
-            }
+                //最大の分散を求めるためのループ
+                // for(std::vector<KademliaBucketEntry>::iterator j=largeRTTVector.begin(); j!=largeRTTVector.end();j++){
+                for(KademliaBucket::iterator j=bucket->begin(); j!=bucket->end();j++){
+                    if(j->getRtt() < kadHandle.getRtt()){
+                        continue;
+                    }
 
-/*
-                if(targetKey != NULL){
+                    //target = j;
+                    // if(largeRTTVector.
+                    //jの値
+                    uint32_t val = KeyPrefixMetric().distance2(bucket->begin()->getKey(), j->getKey());
+
+                    uint32_t kadVal = KeyPrefixMetric().distance2(bucket->begin()->getKey(), kadHandle.getKey());
+                    double  total = init_total - val + kadVal;
+                    //jとkadHandleを交換した場合の平均．
+                    double  ave = total / bucket->size();
+                    //kadHandleの要素値
+                    double k_val = abs(kadVal - ave)*abs(kadVal - ave);
+                    //     double k_val = 1;
+                    uint32_t d_total = k_val;
+                    //jをkadHandleを交換した場合の分散を求めるためのループ
+                    // for(std::vector<KademliaBucketEntry>::iterator m=largeRTTVector.begin(); m!=largeRTTVector.end();m++){
+                    for(KademliaBucket::iterator m=bucket->begin(); m!=bucket->end();m++){
+                        //mの要素の値
+                        double val2 = KeyPrefixMetric().distance2(bucket->begin()->getKey(), m->getKey());
+                        //jの値 = mの値だと，mが交換対象なので考えない．
+                        if(val2 == val){
+                            continue;
+                        }else{
+                            double dif = abs(val2 - ave) * abs(val2 - ave);
+                            //double dif = 0;
+                            d_total += dif;
+                        }
+
+                    }
+
+
+                    // }
+                    double  d = d_total / bucket->size();
+                    if(max_d2 <= d){
+                        found = true;
+
+                        max_d2 = d;
+                        target = j;
+                    }
+                    init_total = init_total2;
+                }
+
+                if(found){
                     bucket->erase(target);
                     //re-add to tail
                     bucket->push_back(kadHandle);
+
                 }
-*/
+            }
 
 
-
-            //return true;
         }
+//Added by Kanemitsu END
         //PNS node replacement
         if (proximityNeighborSelection &&
             kadHandle.getProx() != Prox::PROX_UNKNOWN) {
@@ -1186,10 +1378,11 @@ NodeVector* Kademlia::findNode(const OverlayKey& key, int numRedundantNodes,
 
             OverlayKey minDistance = LONG_MAX;
             double currentRTT = -1;
+//Added by Kanemitsu START
             if(this->rtt_threshold > 0){
                 std::vector<KademliaBucketEntry> rttVector;
                 //現在のホップカウントがrtt_threshold以下であれば，という条件
-                //Kanemitsu START
+
                 for (KademliaBucket::iterator j=bucket->begin(); j!=bucket->end(); j++) {
                     //if(j->getRtt() == MAXTIME){
                     if(j->getRtt() >= 100){
@@ -1234,7 +1427,7 @@ NodeVector* Kademlia::findNode(const OverlayKey& key, int numRedundantNodes,
                             resultProx->add(*j);
                     }
                 }
-                //Kanemitsu END
+//Added by Kanemitsu END
 
             }else{
                 for (KademliaBucket::iterator j=bucket->begin(); j!=bucket->end(); j++) {
