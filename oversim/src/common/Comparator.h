@@ -201,11 +201,12 @@ public:
                - x.sharedPrefixLength(y, bitsPerDigit);
     }
 
-    inline uint32_t distance2(const OverlayKey& x,
+    inline double distance2(const OverlayKey& x,
                                const OverlayKey& y) const
     {
-        return OverlayKey::getLength() / bitsPerDigit
-               - x.sharedPrefixLength(y, bitsPerDigit);
+        //return OverlayKey::getLength() / bitsPerDigit - x.sharedPrefixLength(y, bitsPerDigit);
+        return (x^y).toDouble();
+
     }
 
     inline void setBitsPerDigit(uint8_t bitsPerDigit)
