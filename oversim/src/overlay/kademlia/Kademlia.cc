@@ -334,11 +334,12 @@ KademliaBucket* Kademlia::routingBucket(const OverlayKey& key, bool ensure)
  * @param target
  * @return
  */
-double Kademlia::calcDistanceV(std::vector<KademliaBucketEntry>& list, OverlayKey tKey){
+long double Kademlia::calcDistanceV(KademliaBucket& list, OverlayKey tKey){
     int cnt = 0;
     double totalDistance = 0;
     OverlayKey predKey;
-    for(std::vector<KademliaBucketEntry>::iterator p_a=list.begin(); p_a!=list.end();p_a++){
+    for(KademliaBucket::iterator p_a=list.begin(); p_a!=list.end();p_a++){
+   // for(std::vector<KademliaBucketEntry>::iterator p_a=list.begin(); p_a!=list.end();p_a++){
         if(p_a->getKey() == tKey){
             continue;
         }
@@ -359,7 +360,8 @@ double Kademlia::calcDistanceV(std::vector<KademliaBucketEntry>& list, OverlayKe
     //オリジナルの分散を求める．
     cnt = 0;
     double total_orgv = 0;
-    for(std::vector<KademliaBucketEntry>::iterator p_b=list.begin(); p_b!=list.end();p_b++){
+    for(KademliaBucket::iterator p_b=list.begin(); p_b!=list.end();p_b++){
+    //for(std::vector<KademliaBucketEntry>::iterator p_b=list.begin(); p_b!=list.end();p_b++){
         if(cnt == 0){
             //k-bucketの最初の端の値を取得する．
             //predKey = startEdgeKey;
@@ -421,7 +423,7 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
 
     /* check if node is already a sibling -----------------------------------*/
     if ((i = siblingTable->findIterator(kadHandle.getKey()))
-         != siblingTable->end()) {
+        != siblingTable->end()) {
         // not alive? -> do not change routing information
         if (isAlive) {
             if (!secureMaintenance || authenticated) {
@@ -454,7 +456,7 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
     /* check if node is already in a bucket ---------------------------------*/
     KademliaBucket* bucket = routingBucket(kadHandle.getKey(), false);
     if (bucket != NULL && (i = bucket->findIterator(kadHandle.getKey() ) )
-            != bucket->end() ) {
+                          != bucket->end() ) {
         // not alive? -> do not change routing information
         if (isAlive) {
             if (!secureMaintenance || authenticated) {
@@ -465,8 +467,8 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                 // R/Kademlia
                 if (needsRtt && (kadHandle.getRtt() == MAXTIME)) {
                     Prox prox =
-                        neighborCache->getProx(kadHandle, NEIGHBORCACHE_DEFAULT, -1,
-                                               this, NULL);
+                            neighborCache->getProx(kadHandle, NEIGHBORCACHE_DEFAULT, -1,
+                                                   this, NULL);
                     if (prox != Prox::PROX_SELF &&
                         prox != Prox::PROX_UNKNOWN &&
                         prox != Prox::PROX_WAITING &&
@@ -481,7 +483,7 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                     else {
                         EV << "[Kademlia::routingAdd()] @ " << thisNode.getIp()
                            << " (" << thisNode.getKey().toString(16) << ")]\n"
-                           "    ... node not added, but ping sent." << endl;
+                                                                        "    ... node not added, but ping sent." << endl;
                         return false;
                     }
                 }
@@ -532,7 +534,7 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
             pingNode(kadHandle);
         }
 
-        // R/Kademlia
+            // R/Kademlia
         else if (needsRtt) {
             // old version: pingNode(), now:
             Prox prox =
@@ -624,17 +626,17 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
 
         // PNS
         if (needsRtt || proximityNeighborSelection) {
-             //pingNode(handle, -1, 0, NULL, NULL, NULL, -1, UDP_TRANSPORT, false);
-             Prox prox =
-                 neighborCache->getProx(kadHandle, NEIGHBORCACHE_DEFAULT, -1,
-                                        this, NULL);
-             if (prox != Prox::PROX_SELF &&
-                 prox != Prox::PROX_UNKNOWN &&
-                 prox != Prox::PROX_TIMEOUT) {
-                 //routingAdd(handle, true, prox.proximity);//ctrlInfo->getSrcRoute() //TODO
-                 kadHandle.setProx(prox);
-             }
-         }
+            //pingNode(handle, -1, 0, NULL, NULL, NULL, -1, UDP_TRANSPORT, false);
+            Prox prox =
+                    neighborCache->getProx(kadHandle, NEIGHBORCACHE_DEFAULT, -1,
+                                           this, NULL);
+            if (prox != Prox::PROX_SELF &&
+                prox != Prox::PROX_UNKNOWN &&
+                prox != Prox::PROX_TIMEOUT) {
+                //routingAdd(handle, true, prox.proximity);//ctrlInfo->getSrcRoute() //TODO
+                kadHandle.setProx(prox);
+            }
+        }
 
         bucket->push_back(kadHandle);
         result = true;
@@ -644,10 +646,12 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
            << routingBucketIndex(kadHandle.getKey())
            << " which was not yet full." << endl;
     } else if (isAlive) {
+        bool isHandleAdded = false;
 //Added by Kanemitsu START
         if((rtt_threshold > 0)&&(!kadHandle.isUnspecified())){
             //k-bucket内の隣り合うID間の距離を求める．
             //そして，その平均値を求めて，その分散が最小になるようにする．
+
             if(useEquSpace){
                 if(kadHandle.getRtt() == MAXTIME){
                     Prox prox =
@@ -663,14 +667,18 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                 }
                 int idx = routingBucketIndex(kadHandle.getKey());
                 //int32_t startEdge = pow(2, idx);
-               // OverlayKey startEdgeKey = new OverlayKey(startEdge);
-               // int32_t endEdge = pow(2, idx +1);
+                // OverlayKey startEdgeKey = new OverlayKey(startEdge);
+                // int32_t endEdge = pow(2, idx +1);
 
-               // OverlayKey endEdgeKey = new OverleyKey(endEdge);
-
+                // OverlayKey endEdgeKey = new OverleyKey(endEdge);
+/*
                 std::vector<KademliaBucketEntry> keyVector;
                 std::vector<KademliaBucketEntry> orgKeyVector;
                 std::vector<KademliaBucketEntry> rttVector;
+*/
+                KademliaBucket keyVector;
+                KademliaBucket orgKeyVector;
+                KademliaBucket rttVector;
 
                 keyVector.push_back(kadHandle);
                 for(KademliaBucket::iterator v=bucket->begin(); v!=bucket->end();v++){
@@ -688,12 +696,16 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                 //まずは平均値
                 int cnt = 0;
                 long double totalDistance = 0;
-                for(std::vector<KademliaBucketEntry>::iterator p_a=orgKeyVector.begin(); p_a!=orgKeyVector.end();p_a++){
+
+                for(KademliaBucket::iterator p_a=orgKeyVector.begin(); p_a!=orgKeyVector.end();p_a++){
+               // for(std::vector<KademliaBucketEntry>::iterator p_a=orgKeyVector.begin(); p_a!=orgKeyVector.end();p_a++){
                     if(cnt == 0){
                         //k-bucketの最初の端の値を取得する．
                         //predKey = orgKeyVector.begin().getKey();
                     }else{
+
                         totalDistance += KeyPrefixMetric().distance2(orgKeyVector[cnt].getKey(), predKey);
+
 
 
                     }
@@ -709,7 +721,8 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                 //オリジナルの分散を求める．
                 cnt = 0;
                 long double total_orgv = 0;
-                for(std::vector<KademliaBucketEntry>::iterator p_b=orgKeyVector.begin(); p_b!=orgKeyVector.end();p_b++){
+                for(KademliaBucket::iterator p_b=orgKeyVector.begin(); p_b!=orgKeyVector.end();p_b++){
+                //for(std::vector<KademliaBucketEntry>::iterator p_b=orgKeyVector.begin(); p_b!=orgKeyVector.end();p_b++){
                     if(cnt == 0){
                         //k-bucketの最初の端の値を取得する．
                         //predKey = startEdgeKey;
@@ -739,14 +752,14 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                 //次は，kadhandleと，rttVectorどれか一つを入れ替えた場合の分散を求める．
                 //そのために毎回，vectorを生成する．
                 //keyの小さい順にソートする．
-                keyVector.push_back(kadHandle);
+                //keyVector.push_back(kadHandle);
                 std::sort(keyVector.begin(), keyVector.end(), CompKey());
                 long double minV = v_orgDistance;
                 bool found = false;
                 //vectorの最初から見る．
                 KademliaBucket::iterator retEntry;
-
-                for(std::vector<KademliaBucketEntry>::iterator p_c=rttVector.begin(); p_c!=rttVector.end();p_c++){
+                for(KademliaBucket::iterator p_c=rttVector.begin(); p_c!=rttVector.end();p_c++){
+               // for(std::vector<KademliaBucketEntry>::iterator p_c=rttVector.begin(); p_c!=rttVector.end();p_c++){
                     if(*p_c == kadHandle){
                         continue;
                     }
@@ -780,6 +793,9 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                     //bucket->erase(retEntry);
                     //re-add to tail
                     bucket->push_back(kadHandle);
+                    isHandleAdded = true;
+
+                }else{
 
                 }
 
@@ -912,7 +928,10 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
             if (kickHim->getRtt() > kadHandle.getRtt()) {
                 KademliaBucketEntry temp = *kickHim;
                 bucket->erase(kickHim);
-                bucket->push_back(kadHandle);
+                if(!isHandleAdded){
+                    bucket->push_back(kadHandle);
+
+                }
                 kadHandle = temp;
                 EV << "[Kademlia::routingAdd()] @ " << thisNode.getIp()
                    << " (" << thisNode.getKey().toString(16) << ")]\n"
@@ -941,7 +960,7 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
         }
     }
 
-    // PNS
+        // PNS
     else if (proximityNeighborSelection) {
         neighborCache->getProx(kadHandle, NEIGHBORCACHE_QUERY, -1, this, NULL);
         //pingNode(kadHandle);
@@ -1032,11 +1051,11 @@ void Kademlia::refillSiblingTable()
 
     while ((routingTable[index] == NULL ||
             routingTable[index]->empty()) &&
-            index < (int)(OverlayKey::getLength() - 1)) {
+           index < (int)(OverlayKey::getLength() - 1)) {
         index++;
     }
     if (index < (int)OverlayKey::getLength() &&
-            routingTable[index] != NULL && routingTable[index]->size()) {
+        routingTable[index] != NULL && routingTable[index]->size()) {
 
         KademliaBucket sortedBucket(k, comparator);
         for (uint32_t i = 0; i < routingTable[index]->size(); ++i) {
@@ -1054,7 +1073,7 @@ void Kademlia::refillSiblingTable()
 
         // remove node from bucket
         routingTable[index]->erase(routingTable[index]->
-              findIterator(sortedBucket.front().getKey()));
+                findIterator(sortedBucket.front().getKey()));
         assert(siblingTable->isFull());
         BUCKET_CONSISTENCY(routingTimeout: end refillSiblingTable());
     }
@@ -1070,7 +1089,7 @@ void Kademlia::setBucketUsage(const OverlayKey& key)
 
     if ((siblingTable->size() < (uint32_t)getMaxNumSiblings())
         || ((siblingTable->at(getMaxNumSiblings() - 1).getKey() ^ thisNode.getKey())
-                >= (key ^ thisNode.getKey()))) {
+            >= (key ^ thisNode.getKey()))) {
         siblingTable->setLastUsage(simTime());
     }
 
@@ -1126,7 +1145,7 @@ bool Kademlia::isSiblingFor(const NodeHandle& node, const OverlayKey& key,
     }
 
     KeyDistanceComparator<KeyXorMetric>* comp =
-        new KeyDistanceComparator<KeyXorMetric>(key);
+            new KeyDistanceComparator<KeyXorMetric>(key);
 
     // create result vector
     NodeVector* result = new NodeVector(numSiblings, comp);
@@ -1221,7 +1240,7 @@ bool Kademlia::recursiveRoutingHook(const TransportAddress& dest,
 
             NodeVector* nextHops = findNode(msg->getDestKey(), /*recursiveLookupConfig.redundantNodes*/ k, s, msg);
             KademliaRoutingInfoMessage* kadRoutingInfoMsg =
-                new KademliaRoutingInfoMessage();
+                    new KademliaRoutingInfoMessage();
 
             kadRoutingInfoMsg->setSrcNode(thisNode);
             kadRoutingInfoMsg->setDestKey(msg->getDestKey());
@@ -1256,7 +1275,7 @@ bool Kademlia::recursiveRoutingHook(const TransportAddress& dest,
                            getEncapsulatedPacket())) {
             // alternative mode: infoMsg on its way back
             KademliaRoutingInfoMessage* infoMsg =
-                static_cast<KademliaRoutingInfoMessage*>(msg->decapsulate());
+                    static_cast<KademliaRoutingInfoMessage*>(msg->decapsulate());
             NodeVector* nextHops = findNode(infoMsg->getDestKey(), k, s, msg);
 
             // merge vectors
@@ -1321,7 +1340,7 @@ NodeVector* Kademlia::findNode(const OverlayKey& key, int numRedundantNodes,
 
     // create temporary comparator
     KeyDistanceComparator<KeyXorMetric>* comp =
-        new KeyDistanceComparator<KeyXorMetric>( key );
+            new KeyDistanceComparator<KeyXorMetric>( key );
 
     // select result set size
     bool err;
@@ -1332,7 +1351,7 @@ NodeVector* Kademlia::findNode(const OverlayKey& key, int numRedundantNodes,
         resultSize = numRedundantNodes;
     } else {
         resultSize = isSiblingFor(thisNode, key, numSiblings, &err) ?
-                (numSiblings ? numSiblings : 1) : numRedundantNodes;
+                     (numSiblings ? numSiblings : 1) : numRedundantNodes;
     }
     assert(numSiblings || numRedundantNodes);
 
@@ -1392,7 +1411,7 @@ NodeVector* Kademlia::findNode(const OverlayKey& key, int numRedundantNodes,
                     }
                     OverlayKey tmpDistance = KeyPrefixMetric().distance(key, j->getKey());
                     rttVector.push_back(*j);
-                   // EV << "kanemitsuKey:" << j->getKey() <<"/RTT:"<<j->getRtt()<<"tmpDistance:"<<tmpDistance<< endl;
+                    // EV << "kanemitsuKey:" << j->getKey() <<"/RTT:"<<j->getRtt()<<"tmpDistance:"<<tmpDistance<< endl;
 
                     if(tmpDistance <= minDistance){
                         minDistance = tmpDistance;
@@ -1408,7 +1427,7 @@ NodeVector* Kademlia::findNode(const OverlayKey& key, int numRedundantNodes,
                 //KademliaBucket* rttBucket = new KademliaBucket( k, rttComp );
                 //NodeVector* rttResult = new NodeVector(resultSize, rttComp);
                 for(std::vector<KademliaBucketEntry>::iterator j=rttVector.begin(); j!=rttVector.end();j++){
-                //for(KademliaBucketEntry itr = rttVector.begin(); itr != rttVector.end(); ++itr) {
+                    //for(KademliaBucketEntry itr = rttVector.begin(); itr != rttVector.end(); ++itr) {
 
 
                     OverlayKey tmpDistance = KeyPrefixMetric().distance(key, j->getKey());
@@ -1443,19 +1462,19 @@ NodeVector* Kademlia::findNode(const OverlayKey& key, int numRedundantNodes,
             //for (KademliaBucket::iterator i=bucket->begin(); i!=bucket->end(); i++) {
 
 
-                //EV << "kanemitsu:" << i->getKey() << endl;
-               /* double val = SIMTIME_DBL(i->getRtt());
-                if(val <= minRTT){
-                    minRTT = val;
-                }
-                */
-                        //i->getRtt();
-          //      result->add(*i);
-          //      if (returnProxNodes)
-          //          resultProx->add(*i);
-                //EV << "Kademlia::findNode(): Adding "
-                //   << *i << " from bucket " << mainIndex << endl;
-          //  }
+            //EV << "kanemitsu:" << i->getKey() << endl;
+            /* double val = SIMTIME_DBL(i->getRtt());
+             if(val <= minRTT){
+                 minRTT = val;
+             }
+             */
+            //i->getRtt();
+            //      result->add(*i);
+            //      if (returnProxNodes)
+            //          resultProx->add(*i);
+            //EV << "Kademlia::findNode(): Adding "
+            //   << *i << " from bucket " << mainIndex << endl;
+            //  }
         }
     }
 
@@ -1686,7 +1705,7 @@ bool Kademlia::handleRpcCall(BaseCallMessage* msg)
     RPC_ON_CALL(Ping) {
         // add active node
         OverlayCtrlInfo* ctrlInfo =
-            check_and_cast<OverlayCtrlInfo*>(msg->getControlInfo());
+                check_and_cast<OverlayCtrlInfo*>(msg->getControlInfo());
         routingAdd(ctrlInfo->getSrcRoute(), true, MAXTIME, maintenanceLookup);
         break;
     }
@@ -1694,7 +1713,7 @@ bool Kademlia::handleRpcCall(BaseCallMessage* msg)
     {
         // add active node
         OverlayCtrlInfo* ctrlInfo =
-            check_and_cast<OverlayCtrlInfo*>(msg->getControlInfo());
+                check_and_cast<OverlayCtrlInfo*>(msg->getControlInfo());
         routingAdd(ctrlInfo->getSrcRoute(), true, MAXTIME, maintenanceLookup);
         break;
     }
@@ -1709,60 +1728,60 @@ void Kademlia::handleRpcResponse(BaseResponseMessage* msg,
 {
     bool maintenanceLookup = (msg->getStatType() == MAINTENANCE_STAT);
     OverlayCtrlInfo* ctrlInfo =
-        dynamic_cast<OverlayCtrlInfo*>(msg->getControlInfo());
+            dynamic_cast<OverlayCtrlInfo*>(msg->getControlInfo());
     NodeHandle srcRoute = (ctrlInfo ? ctrlInfo->getSrcRoute()
                                     : msg->getSrcNode());
 
     RPC_SWITCH_START(msg)
-        RPC_ON_RESPONSE(Ping) {
-            if (state == INIT) {
+    RPC_ON_RESPONSE(Ping) {
+        if (state == INIT) {
+            // schedule bucket refresh timer
+            cancelEvent(bucketRefreshTimer);
+            scheduleAt(simTime(), bucketRefreshTimer);
+            cancelEvent(siblingPingTimer);
+            scheduleAt(simTime() + siblingPingInterval, siblingPingTimer);
+            state = JOIN;
+        }
+    }
+    RPC_ON_RESPONSE(FindNode)
+    {
+        if (state == INIT) {
+            state = JOIN;
+
+            // bootstrap node is trustworthy: add all nodes immediately
+            routingAdd(srcRoute, true, rtt, maintenanceLookup);
+            for (uint32_t i=0; i<_FindNodeResponse->getClosestNodesArraySize(); i++)
+                routingAdd(_FindNodeResponse->getClosestNodes(i), true,
+                           MAXTIME-1, maintenanceLookup);
+
+            if (newMaintenance) {
+                createLookup()->lookup(getThisNode().getKey(), s, hopCountMax, 0,
+                                       new KademliaLookupListener(this));
+            } else {
                 // schedule bucket refresh timer
                 cancelEvent(bucketRefreshTimer);
                 scheduleAt(simTime(), bucketRefreshTimer);
                 cancelEvent(siblingPingTimer);
                 scheduleAt(simTime() + siblingPingInterval, siblingPingTimer);
-                state = JOIN;
-            }
-        }
-        RPC_ON_RESPONSE(FindNode)
-        {
-            if (state == INIT) {
-                state = JOIN;
-
-                // bootstrap node is trustworthy: add all nodes immediately
-                routingAdd(srcRoute, true, rtt, maintenanceLookup);
-                for (uint32_t i=0; i<_FindNodeResponse->getClosestNodesArraySize(); i++)
-                    routingAdd(_FindNodeResponse->getClosestNodes(i), true,
-                               MAXTIME-1, maintenanceLookup);
-
-                if (newMaintenance) {
-                    createLookup()->lookup(getThisNode().getKey(), s, hopCountMax, 0,
-                                       new KademliaLookupListener(this));
-                } else {
-                    // schedule bucket refresh timer
-                    cancelEvent(bucketRefreshTimer);
-                    scheduleAt(simTime(), bucketRefreshTimer);
-                    cancelEvent(siblingPingTimer);
-                    scheduleAt(simTime() + siblingPingInterval, siblingPingTimer);
-                }
-
-                break;
             }
 
-            // add active node
-            if (defaultRoutingType == SEMI_RECURSIVE_ROUTING ||
-                defaultRoutingType == FULL_RECURSIVE_ROUTING ||
-                defaultRoutingType == RECURSIVE_SOURCE_ROUTING) {
-                rtt = MAXTIME;
-            }
-            setBucketUsage(srcRoute.getKey());
-
-            // add inactive nodes
-            for (uint32_t i=0; i<_FindNodeResponse->getClosestNodesArraySize(); i++)
-                routingAdd(_FindNodeResponse->getClosestNodes(i), false,
-                           MAXTIME, maintenanceLookup);
             break;
         }
+
+        // add active node
+        if (defaultRoutingType == SEMI_RECURSIVE_ROUTING ||
+            defaultRoutingType == FULL_RECURSIVE_ROUTING ||
+            defaultRoutingType == RECURSIVE_SOURCE_ROUTING) {
+            rtt = MAXTIME;
+        }
+        setBucketUsage(srcRoute.getKey());
+
+        // add inactive nodes
+        for (uint32_t i=0; i<_FindNodeResponse->getClosestNodesArraySize(); i++)
+            routingAdd(_FindNodeResponse->getClosestNodes(i), false,
+                       MAXTIME, maintenanceLookup);
+        break;
+    }
     RPC_SWITCH_END()
 
     // add node that responded
@@ -1861,8 +1880,8 @@ void Kademlia::handleBucketRefreshTimerExpired()
             int baseRedundantNodes = iterativeLookupConfig.redundantNodes;
             iterativeLookupConfig.redundantNodes = siblingRefreshNodes;
             createLookup(EXHAUSTIVE_ITERATIVE_ROUTING)->lookup(
-                 getThisNode().getKey(), siblingRefreshNodes,
-                 hopCountMax, 0, new KademliaLookupListener(this));
+                    getThisNode().getKey(), siblingRefreshNodes,
+                    hopCountMax, 0, new KademliaLookupListener(this));
             iterativeLookupConfig.redundantNodes = baseRedundantNodes;
         } else if (newMaintenance) {
             //for (KademliaBucket::iterator i = siblingTable->begin();
@@ -1889,7 +1908,7 @@ void Kademlia::handleBucketRefreshTimerExpired()
             // from our next sibling's key to prevent us from refreshing
             // buckets, which can't contain any nodes
             int32_t diff = OverlayKey::getLength() - b*(getThisNode().getKey().
-                sharedPrefixLength(siblingTable->front().getKey(), b) + 1);
+                    sharedPrefixLength(siblingTable->front().getKey(), b) + 1);
             int bucketsRefreshedPerTask = 0;
             for (int32_t i = OverlayKey::getLength() - b; i >= diff; i -=b ) {
                 for (int32_t d=0; d < ((1 << b) - 1); d++) {
@@ -1897,10 +1916,10 @@ void Kademlia::handleBucketRefreshTimerExpired()
                     if (index < 0) continue;
                     if ((routingTable[index] == NULL) ||
                         ((simTime() - routingTable[index]->getLastUsage()) >
-                        minBucketRefreshInterval)) {
+                         minBucketRefreshInterval)) {
 
                         OverlayKey refreshKey =
-                            getThisNode().getKey() ^ (OverlayKey(d+1) << i);
+                                getThisNode().getKey() ^ (OverlayKey(d+1) << i);
 
                         // R/Kademlia
                         if (defaultRoutingType == SEMI_RECURSIVE_ROUTING ||
@@ -1915,12 +1934,12 @@ void Kademlia::handleBucketRefreshTimerExpired()
                             int baseRedundantNodes = iterativeLookupConfig.redundantNodes;
                             iterativeLookupConfig.redundantNodes = bucketRefreshNodes;
                             createLookup(EXHAUSTIVE_ITERATIVE_ROUTING)->lookup(
-                                refreshKey, bucketRefreshNodes, hopCountMax,
-                                0, new KademliaLookupListener(this));
+                                    refreshKey, bucketRefreshNodes, hopCountMax,
+                                    0, new KademliaLookupListener(this));
                             iterativeLookupConfig.redundantNodes = baseRedundantNodes;
                         } else {
                             createLookup()->lookup(refreshKey, s, hopCountMax, 0,
-                                             new KademliaLookupListener(this));
+                                                   new KademliaLookupListener(this));
                         }
 
                         ++bucketsRefreshedPerTask;
@@ -1930,13 +1949,13 @@ void Kademlia::handleBucketRefreshTimerExpired()
                 }
             }
             RECORD_STATS(globalStatistics->recordOutVector(
-                                   "Kademlia: Buckets Refreshed Per Task",
-                                   bucketsRefreshedPerTask));
+                    "Kademlia: Buckets Refreshed Per Task",
+                    bucketsRefreshedPerTask));
         }
         // schedule next bucket refresh process
         cancelEvent(bucketRefreshTimer);
         scheduleAt(simTime() + (std::min(minSiblingTableRefreshInterval,
-                        minBucketRefreshInterval) / 10.0), bucketRefreshTimer);
+                                         minBucketRefreshInterval) / 10.0), bucketRefreshTimer);
     }
 }
 
@@ -1959,9 +1978,9 @@ void Kademlia::updateTooltip()
                  << siblingTable->size();
 
         getParentModule()->getParentModule()->getDisplayString().
-        setTagArg("tt", 0, ttString.str().c_str());
+                setTagArg("tt", 0, ttString.str().c_str());
         getParentModule()->getDisplayString().
-        setTagArg("tt", 0, ttString.str().c_str());
+                setTagArg("tt", 0, ttString.str().c_str());
         getDisplayString().setTagArg("tt", 0, ttString.str().c_str());
     }
 }

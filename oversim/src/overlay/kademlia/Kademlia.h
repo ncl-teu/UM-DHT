@@ -170,7 +170,7 @@ protected:
 
     virtual void handleNodeGracefulLeaveNotification();
 
-    virtual double calcDistanceV(std::vector<KademliaBucketEntry>& list, OverlayKey tKey);
+    virtual long double calcDistanceV(KademliaBucket& list, OverlayKey tKey);
 
     virtual KademliaBucketEntry* getTarget(std::vector<KademliaBucketEntry>& list, KademliaBucketEntry& handle);
 
