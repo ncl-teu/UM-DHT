@@ -201,11 +201,18 @@ public:
                - x.sharedPrefixLength(y, bitsPerDigit);
     }
 
-    inline double distance2(const OverlayKey& x,
+    inline int64_t distance2(const OverlayKey& x,
                                const OverlayKey& y) const
     {
-        //return OverlayKey::getLength() / bitsPerDigit - x.sharedPrefixLength(y, bitsPerDigit);
-        return (x^y).toDouble();
+
+
+        if(!x.isUnspecified() && !y.isUnspecified()){
+            //return OverlayKey::getLength() / bitsPerDigit - x.sharedPrefixLength(y, bitsPerDigit);
+            return abs((x^y).toDouble());
+        }else{
+            return 0;
+        }
+
 
     }
 
