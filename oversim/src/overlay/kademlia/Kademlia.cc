@@ -37,6 +37,7 @@
 #include <BootstrapList.h>
 #include <string.h>
 #include <cmath>
+#include <iomanip>
 
 
 #if 0
@@ -336,7 +337,7 @@ KademliaBucket* Kademlia::routingBucket(const OverlayKey& key, bool ensure)
  */
 long double Kademlia::calcDistanceV(KademliaBucket& list, OverlayKey tKey){
     int cnt = 0;
-    double totalDistance = 0;
+    int64_t totalDistance = 0;
     OverlayKey predKey;
     for(KademliaBucket::iterator p_a=list.begin(); p_a!=list.end();p_a++){
    // for(std::vector<KademliaBucketEntry>::iterator p_a=list.begin(); p_a!=list.end();p_a++){
@@ -346,36 +347,51 @@ long double Kademlia::calcDistanceV(KademliaBucket& list, OverlayKey tKey){
         if(cnt == 0){
             //k-bucketの最初の端の値を取得する．
             //predKey = orgKeyVector.begin().getKey();
+            cnt++;
         }else{
-            totalDistance += KeyPrefixMetric().distance2(list[cnt].getKey(), predKey);
+            if(!list[cnt].isUnspecified() && !predKey.isUnspecified()){
+                totalDistance += KeyPrefixMetric().distance2(list[cnt].getKey(), predKey);
+                cnt++;
+            }
+
 
         }
         predKey = p_a->getKey();
-        cnt++;
+       // cnt++;
     }
-    //最後の距離を求める．
-    totalDistance += KeyPrefixMetric().distance2(list[list.size()-1].getKey(), predKey);
+    if(!list[list.size()-1].isUnspecified() && !predKey.isUnspecified()){
+        //最後の距離を求める．
+        totalDistance += KeyPrefixMetric().distance2(list[list.size()-1].getKey(), predKey);
+    }
+
     //オリジナルの平均を求める．
-    double ave_orgDistance = totalDistance / cnt;
+    int64_t ave_orgDistance = totalDistance / cnt;
     //オリジナルの分散を求める．
     cnt = 0;
-    double total_orgv = 0;
+    long double total_orgv = 0;
     for(KademliaBucket::iterator p_b=list.begin(); p_b!=list.end();p_b++){
     //for(std::vector<KademliaBucketEntry>::iterator p_b=list.begin(); p_b!=list.end();p_b++){
         if(cnt == 0){
             //k-bucketの最初の端の値を取得する．
             //predKey = startEdgeKey;
+            cnt++;
         }else{
-            double dist = KeyPrefixMetric().distance2(list[cnt].getKey(), predKey);
-            total_orgv  += abs(dist - ave_orgDistance) * abs(dist - ave_orgDistance);
+            if(!list[cnt].isUnspecified() && !predKey.isUnspecified()){
+                int64_t dist = KeyPrefixMetric().distance2(list[cnt].getKey(), predKey);
+                total_orgv  += abs(dist - ave_orgDistance) * abs(dist - ave_orgDistance);
+                cnt++;
+            }
+
         }
         predKey = p_b->getKey();
-        cnt++;
 
     }
-    total_orgv += KeyPrefixMetric().distance2(list[list.size()-1].getKey(), predKey);
+    if(!list[list.size()-1].isUnspecified() && !predKey.isUnspecified()) {
+        total_orgv += KeyPrefixMetric().distance2(list[list.size()-1].getKey(), predKey);
+
+    }
     //オリジナルの分散を求める．
-    double v_orgDistance = total_orgv / cnt;
+    long double v_orgDistance = total_orgv / cnt;
 
     return v_orgDistance;
 }
@@ -695,28 +711,33 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                 //オリジナルの場合の分散を計算する．
                 //まずは平均値
                 int cnt = 0;
-                long double totalDistance = 0;
+                int64_t  totalDistance = 0;
 
                 for(KademliaBucket::iterator p_a=orgKeyVector.begin(); p_a!=orgKeyVector.end();p_a++){
                // for(std::vector<KademliaBucketEntry>::iterator p_a=orgKeyVector.begin(); p_a!=orgKeyVector.end();p_a++){
                     if(cnt == 0){
                         //k-bucketの最初の端の値を取得する．
                         //predKey = orgKeyVector.begin().getKey();
+                        cnt++;
                     }else{
-
-                        totalDistance += KeyPrefixMetric().distance2(orgKeyVector[cnt].getKey(), predKey);
+                        if(!orgKeyVector[cnt].isUnspecified() && !predKey.isUnspecified()){
+                            totalDistance += KeyPrefixMetric().distance2(orgKeyVector[cnt].getKey(), predKey);
+                            cnt++;
+                        }
 
 
 
                     }
                     predKey = p_a->getKey();
-                    cnt++;
                 }
                 //最後の距離を求める．
+                if(!orgKeyVector[orgKeyVector.size()-1].isUnspecified() && !predKey.isUnspecified()){
+                    totalDistance += KeyPrefixMetric().distance2(orgKeyVector[orgKeyVector.size()-1].getKey(), predKey);
 
-                totalDistance += KeyPrefixMetric().distance2(orgKeyVector[orgKeyVector.size()-1].getKey(), predKey);
+                }
                 //オリジナルの平均を求める．
-                long double ave_orgDistance = totalDistance / cnt;
+                int64_t  ave_orgDistance = totalDistance / cnt;
+                //int64_t  ave_orgDistance = fixed<<std::setprecision(4) << totalDistance/cnt;
 
                 //オリジナルの分散を求める．
                 cnt = 0;
@@ -726,15 +747,23 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                     if(cnt == 0){
                         //k-bucketの最初の端の値を取得する．
                         //predKey = startEdgeKey;
+                        cnt++;
                     }else{
-                        double dist = KeyPrefixMetric().distance2(orgKeyVector[cnt].getKey(), predKey);
-                        total_orgv  += abs(dist - ave_orgDistance) * abs(dist - ave_orgDistance);
+                        if(!orgKeyVector[cnt].isUnspecified() && !predKey.isUnspecified()){
+                            int64_t  dist = KeyPrefixMetric().distance2(orgKeyVector[cnt].getKey(), predKey);
+                            total_orgv  += abs(dist - ave_orgDistance) * abs(dist - ave_orgDistance);
+                            cnt++;
+                        }
+
                     }
                     predKey = p_b->getKey();
-                    cnt++;
+
 
                 }
-                total_orgv += KeyPrefixMetric().distance2(orgKeyVector[orgKeyVector.size()-1].getKey(), predKey);
+                if(!orgKeyVector[orgKeyVector.size()-1].isUnspecified() && !predKey.isUnspecified()) {
+                    total_orgv += KeyPrefixMetric().distance2(orgKeyVector[orgKeyVector.size()-1].getKey(), predKey);
+
+                }
                 //オリジナルの分散を求める．
                 long double v_orgDistance = total_orgv / cnt;
 
@@ -754,7 +783,7 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                 //keyの小さい順にソートする．
                 //keyVector.push_back(kadHandle);
                 std::sort(keyVector.begin(), keyVector.end(), CompKey());
-                long double minV = v_orgDistance;
+                int64_t  minV = v_orgDistance;
                 bool found = false;
                 //vectorの最初から見る．
                 KademliaBucket::iterator retEntry;
@@ -821,6 +850,7 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                 for (KademliaBucket::iterator j=bucket->begin(); j!=bucket->end(); j++) {
                     //totalKey += j->getKey();
                     // init_total += (thisNode.getKey()^(j->getKey())).toDouble();
+
                     init_total += KeyPrefixMetric().distance2(bucket->begin()->getKey(), j->getKey());
                     //EV << "KETA1:"<< (thisNode.getKey()^(j->getKey())).toDouble() <<endl;
                     if(j->getRtt() == MAXTIME){
@@ -1319,6 +1349,7 @@ public:
 
 bool Kademlia::cmpRTT(const KademliaBucketEntry& a, const KademliaBucketEntry& b){
     return a.getRtt() < b.getRtt();
+
 }
 
 NodeVector* Kademlia::findNode(const OverlayKey& key, int numRedundantNodes,
