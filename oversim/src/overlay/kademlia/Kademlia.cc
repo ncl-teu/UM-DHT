@@ -349,8 +349,8 @@ long double Kademlia::calcDistanceV(KademliaBucket& list, OverlayKey tKey){
             //predKey = orgKeyVector.begin().getKey();
             cnt++;
         }else{
-            if(!list[cnt].isUnspecified() && !predKey.isUnspecified()){
-                totalDistance += KeyPrefixMetric().distance2(list[cnt].getKey(), predKey);
+            if(!p_a->isUnspecified() && !predKey.isUnspecified()){
+                totalDistance += KeyPrefixMetric().distance2(p_a->getKey(), predKey);
                 cnt++;
             }
 
@@ -376,8 +376,8 @@ long double Kademlia::calcDistanceV(KademliaBucket& list, OverlayKey tKey){
             //predKey = startEdgeKey;
             cnt++;
         }else{
-            if(!list[cnt].isUnspecified() && !predKey.isUnspecified()){
-                int64_t dist = KeyPrefixMetric().distance2(list[cnt].getKey(), predKey);
+            if(!p_b->isUnspecified() && !predKey.isUnspecified()){
+                int64_t dist = KeyPrefixMetric().distance2(p_b->getKey(), predKey);
                 total_orgv  += abs(dist - ave_orgDistance) * abs(dist - ave_orgDistance);
                 cnt++;
             }
@@ -723,8 +723,8 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                         //predKey = orgKeyVector.begin().getKey();
                         cnt++;
                     }else{
-                        if(!orgKeyVector[cnt].isUnspecified() && !predKey.isUnspecified()){
-                            totalDistance += KeyPrefixMetric().distance2(orgKeyVector[cnt].getKey(), predKey);
+                        if(!p_a->isUnspecified() && !predKey.isUnspecified()){
+                            totalDistance += KeyPrefixMetric().distance2(p_a->getKey(), predKey);
                             cnt++;
                         }
 
@@ -752,8 +752,8 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                         //predKey = startEdgeKey;
                         cnt++;
                     }else{
-                        if(!orgKeyVector[cnt].isUnspecified() && !predKey.isUnspecified()){
-                            int64_t  dist = KeyPrefixMetric().distance2(orgKeyVector[cnt].getKey(), predKey);
+                        if(!p_b->isUnspecified() && !predKey.isUnspecified()){
+                            int64_t  dist = KeyPrefixMetric().distance2(p_b->getKey(), predKey);
                             total_orgv  += abs(dist - ave_orgDistance) * abs(dist - ave_orgDistance);
                             cnt++;
                         }
