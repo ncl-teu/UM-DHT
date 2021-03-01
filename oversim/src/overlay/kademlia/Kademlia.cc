@@ -340,7 +340,7 @@ long double Kademlia::calcDistanceV(KademliaBucket& list, OverlayKey tKey){
     int64_t totalDistance = 0;
     OverlayKey predKey;
     for(KademliaBucket::iterator p_a=list.begin(); p_a!=list.end();p_a++){
-   // for(std::vector<KademliaBucketEntry>::iterator p_a=list.begin(); p_a!=list.end();p_a++){
+        // for(std::vector<KademliaBucketEntry>::iterator p_a=list.begin(); p_a!=list.end();p_a++){
         if(p_a->getKey() == tKey){
             continue;
         }
@@ -357,7 +357,7 @@ long double Kademlia::calcDistanceV(KademliaBucket& list, OverlayKey tKey){
 
         }
         predKey = p_a->getKey();
-       // cnt++;
+        // cnt++;
     }
     if(!list[list.size()-1].isUnspecified() && !predKey.isUnspecified()){
         //最後の距離を求める．
@@ -370,7 +370,7 @@ long double Kademlia::calcDistanceV(KademliaBucket& list, OverlayKey tKey){
     cnt = 0;
     long double total_orgv = 0;
     for(KademliaBucket::iterator p_b=list.begin(); p_b!=list.end();p_b++){
-    //for(std::vector<KademliaBucketEntry>::iterator p_b=list.begin(); p_b!=list.end();p_b++){
+        //for(std::vector<KademliaBucketEntry>::iterator p_b=list.begin(); p_b!=list.end();p_b++){
         if(cnt == 0){
             //k-bucketの最初の端の値を取得する．
             //predKey = startEdgeKey;
@@ -698,6 +698,9 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
 
                 keyVector.push_back(kadHandle);
                 for(KademliaBucket::iterator v=bucket->begin(); v!=bucket->end();v++){
+                    if(v->isUnspecified()){
+                        continue;
+                    }
                     keyVector.push_back(*v);
                     orgKeyVector.push_back(*v);
 
@@ -714,7 +717,7 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                 int64_t  totalDistance = 0;
 
                 for(KademliaBucket::iterator p_a=orgKeyVector.begin(); p_a!=orgKeyVector.end();p_a++){
-               // for(std::vector<KademliaBucketEntry>::iterator p_a=orgKeyVector.begin(); p_a!=orgKeyVector.end();p_a++){
+                    // for(std::vector<KademliaBucketEntry>::iterator p_a=orgKeyVector.begin(); p_a!=orgKeyVector.end();p_a++){
                     if(cnt == 0){
                         //k-bucketの最初の端の値を取得する．
                         //predKey = orgKeyVector.begin().getKey();
@@ -743,7 +746,7 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                 cnt = 0;
                 long double total_orgv = 0;
                 for(KademliaBucket::iterator p_b=orgKeyVector.begin(); p_b!=orgKeyVector.end();p_b++){
-                //for(std::vector<KademliaBucketEntry>::iterator p_b=orgKeyVector.begin(); p_b!=orgKeyVector.end();p_b++){
+                    //for(std::vector<KademliaBucketEntry>::iterator p_b=orgKeyVector.begin(); p_b!=orgKeyVector.end();p_b++){
                     if(cnt == 0){
                         //k-bucketの最初の端の値を取得する．
                         //predKey = startEdgeKey;
@@ -788,7 +791,7 @@ bool Kademlia::routingAdd(const NodeHandle& handle, bool isAlive,
                 //vectorの最初から見る．
                 KademliaBucket::iterator retEntry;
                 for(KademliaBucket::iterator p_c=rttVector.begin(); p_c!=rttVector.end();p_c++){
-               // for(std::vector<KademliaBucketEntry>::iterator p_c=rttVector.begin(); p_c!=rttVector.end();p_c++){
+                    // for(std::vector<KademliaBucketEntry>::iterator p_c=rttVector.begin(); p_c!=rttVector.end();p_c++){
                     if(*p_c == kadHandle){
                         continue;
                     }
