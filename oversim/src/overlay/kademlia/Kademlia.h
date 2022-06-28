@@ -269,6 +269,8 @@ class CompKey{
 public:
     bool operator()(const KademliaBucketEntry& a, const KademliaBucketEntry& b) {
         return a.getKey() < b.getKey();
+
+        //return a.getKey().log_2() < b.getKey().log_2();
     }
 };
 

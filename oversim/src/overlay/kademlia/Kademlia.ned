@@ -57,6 +57,7 @@ simple Kademlia extends BaseOverlay
         //for KadRTT. Threshold of hop count to switch from KadRTT to Kademlia.
         // value of 0 means ordinary Kademlia.
         int rtt_threshold;
+        bool useEquSpace;
 }
 
 //

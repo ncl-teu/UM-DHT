@@ -1543,6 +1543,7 @@ NodeVector* Kademlia::findNode(const OverlayKey& key, int numRedundantNodes,
                             //currentRTT = SIMTIME_DBL(j->getRtt());
                         }
                     }
+
                     std::sort(rttVector.begin(), rttVector.end(),Comp());
                     //Comparatorを，RTTの小さい順になるようなものにする．
                     //minDistance * 2 (=minDistance << 2)以下であり，かつRTTの小さい順にresultへ格納する．
